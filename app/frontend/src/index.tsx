@@ -12,6 +12,8 @@ import Chat from './pages/chat/Chat';
 import OneShot from "./pages/oneshot/OneShot";
 import Upload from "./pages/upload/Upload";
 import Help from "./pages/help/Help";
+import Edgar from "./pages/edgar/Edgar";
+import BotChat from "./pages/botchat/BotChat";
 
 initializeIcons();
 
@@ -23,6 +25,8 @@ export default function App() {
                     <Route path="upload" element={<Upload />} />
                     {/* <Route path="chat" element={<Chat />} /> */}
                     <Route path="qa" element={<OneShot />} />
+                    {/* <Route path="botchat" element={<BotChat />} /> */}
+                    <Route path="edgar" element={<Edgar />} />
                     <Route index element={<ChatGpt />} />
                     <Route path="help" index element={<Help />} />
                     <Route path="*" element={<NoPage />} />

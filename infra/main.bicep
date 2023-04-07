@@ -8,9 +8,12 @@ param location string
 @description('Prefix used for all resources')
 param prefix string
 
-@minLength(6)
-@description('Resource Group name')
-param resourceGroupName string
+@minLength(1)
+@maxLength(64)
+@description('Name of the the environment which is used to generate a short unique hash used in all resources.')
+param environmentName string
+
+param resourceGroupName string = '${prefix}rg'
 
 param appServicePlanName string = '${prefix}asp'
 param backendServiceName string = '${prefix}backend'
@@ -23,6 +26,7 @@ param storageAccountName string = '${prefix}stor'
 param containerName string = 'chatpdf'
 
 param openAiServiceName string = '${prefix}oai'
+param applicationInsightsName string = '${prefix}appisg'
 
 param openAiSkuName string = 'S0'
 
@@ -33,18 +37,25 @@ param chatGptModelName string = 'gpt-35-turbo'
 param textEmbeddingDeploymentName string = 'text-embedding-ada-002'
 param textEmbeddingModelName string = 'text-embedding-ada-002'
 
-@description('Id of the user or app to assign application roles')
-param principalId string = ''
-
 var abbrs = loadJsonContent('abbreviations.json')
 var resourceToken = toLower(uniqueString(subscription().id, location))
-var tags = {}
+var tags = { 'azd-env-name': environmentName }
 
 // Organize resources in a resource group
 resource resourceGroup 'Microsoft.Resources/resourceGroups@2021-04-01' = {
-  name: !empty(resourceGroupName) ? resourceGroupName : '${abbrs.resourcesResourceGroups}${location}'
+  name: !empty(resourceGroupName) ? resourceGroupName : '${prefix}'
   location: location
   tags: tags
+}
+
+module monitoring 'core/monitor/applicationinsights.bicep' = {
+  name: 'monitoring'
+  scope: resourceGroup
+  params: {
+    location: location
+    tags: tags
+    name: !empty(applicationInsightsName) ? applicationInsightsName : '${abbrs.insightsComponents}${resourceToken}'
+  }
 }
 
 // Create an App Service Plan to group applications under the same payment plan and SKU
@@ -63,67 +74,47 @@ module appServicePlan 'core/host/appserviceplan.bicep' = {
   }
 }
 
-module function 'core/host/appservice.bicep' = {
-  name: 'function'
+module storage 'core/storage/storage-account.bicep' = {
+  name: 'storage'
   scope: resourceGroup
   params: {
-    name: !empty(functionAppName) ? functionAppName : '${abbrs.webSitesAppService}func-${resourceToken}'
+    name: !empty(storageAccountName) ? storageAccountName : '${abbrs.storageStorageAccounts}${resourceToken}'
     location: location
-    tags: union(tags, { 'azd-service-name': 'backend' })
-    appServicePlanId: appServicePlan.outputs.id
-    runtimeName: 'python'
-    runtimeVersion: '3.10'
-    scmDoBuildDuringDeployment: true
-    managedIdentity: true
-    appSettings: {
-      OpenAiApiKey: storage.outputs.name
-      OpenAiService:openAi.outputs.name
-      OpenAiEndPoint:openAi.outputs.endpoint
-      OpenAiVersion:'2022-12-01'
-      OpenAiDavinci:gptDeploymentName
-      OpenAiEmbedding:textEmbeddingDeploymentName
-      MaxTokens:500
-      Temperature:'0.3'
-      OpenAiChatDocStorName:storage.outputs.name
-      OpenAiChatDocContainer:containerName
-      OpenAiChat:chatGptDeploymentName
-      PineconeKey:''
-      PineconeEnv:''
-      VsIndexName:''
-      RedisPassword:''
-      RedisAddress:''
-      RedisPort:''
-      OpenAiDocStorName:storage.outputs.name
-      //OpenAiDocStorKey:listKeys(resourceId(subscription().subscriptionId, resourceGroup.name, storage.type, storage.name), storage.apiVersion).keys[0].value
-      OpenAiDocContainer:containerName
-      //SearchService:searchServiceName.outputs.name
-      //SearchKey:
+    tags: tags
+    publicNetworkAccess: 'Enabled'
+    sku: {
+      name: 'Standard_ZRS'
     }
+    deleteRetentionPolicy: {
+      enabled: true
+      days: 2
+    }
+    containers: [
+      {
+        name: containerName
+        publicAccess: 'None'
+      }
+      {
+        name: 'secdoc'
+        publicAccess: 'None'
+      }
+    ]
   }
 }
 
-// The application frontend
-module backend 'core/host/appservice.bicep' = {
-  name: 'web'
+module emptyfunction 'core/host/function.bicep' = {
+  name: 'emptyfunction'
   scope: resourceGroup
   params: {
-    name: !empty(backendServiceName) ? backendServiceName : '${abbrs.webSitesAppService}backend-${resourceToken}'
+    name: !empty(functionAppName) ? functionAppName : '${abbrs.webSitesAppService}func-${resourceToken}'
+    emptyFunction:true
     location: location
-    tags: union(tags, { 'azd-service-name': 'backend' })
     appServicePlanId: appServicePlan.outputs.id
+    tags: union(tags, { 'azd-service-name': 'functionapp' })
     runtimeName: 'python'
-    runtimeVersion: '3.10'
-    scmDoBuildDuringDeployment: true
+    runtimeVersion: '3.9'
     managedIdentity: true
-    appSettings: {
-      QA_URL: storage.outputs.name
-      CHAT_URL: containerName
-      CHAT3_URL: openAi.outputs.name
-      DOCGENERATOR_URL: searchService.outputs.name
-      SUMMARYQA_URL: gptDeploymentName
-      //BLOB_CONNECTION_STRING: 'DefaultEndpointsProtocol=https;AccountName=${storage.outputs.name};AccountKey=${listKeys(storage.outputs.id, storage.outputs.apiVersion).keys[0].value};EndpointSuffix=core.windows.net'
-      BLOB_CONTAINER_NAME:containerName
-    }
+    appSettings: {}
   }
 }
 
@@ -194,29 +185,85 @@ module searchService 'core/search/search-services.bicep' = {
   }
 }
 
-module storage 'core/storage/storage-account.bicep' = {
-  name: 'storage'
+
+module function 'core/host/function.bicep' = {
+  name: 'function'
   scope: resourceGroup
+  dependsOn: [
+    appServicePlan
+    monitoring
+    searchService
+    storage
+    openAi
+  ]
   params: {
-    name: !empty(storageAccountName) ? storageAccountName : '${abbrs.storageStorageAccounts}${resourceToken}'
+    name: !empty(functionAppName) ? functionAppName : '${abbrs.webSitesAppService}func-${resourceToken}'
     location: location
-    tags: tags
-    publicNetworkAccess: 'Enabled'
-    sku: {
-      name: 'Standard_ZRS'
+    emptyFunction:false
+    appServicePlanId: appServicePlan.outputs.id
+    tags: union(tags, { 'azd-service-name': 'functionapp' })
+    runtimeName: 'python'
+    runtimeVersion: '3.9'
+    managedIdentity: true
+    appSettings: {
+      APPINSIGHTS_INSTRUMENTATIONKEY: monitoring.outputs.instrumentationKey
+      APPLICATIONINSIGHTS_CONNECTION_STRING: monitoring.outputs.connectionString
+      OpenAiService:openAi.outputs.name
+      OpenAiEndPoint:openAi.outputs.endpoint
+      OpenAiVersion:'2022-12-01'
+      OpenAiDavinci:gptDeploymentName
+      OpenAiEmbedding:textEmbeddingDeploymentName
+      OpenAiKey:openAi.outputs.key
+      MaxTokens:500
+      Temperature:'0.3'
+      OpenAiChat:chatGptDeploymentName
+      PineconeKey:'key'
+      PineconeEnv:'env'
+      VsIndexName:'dummy'
+      RedisPassword:'Password'
+      RedisAddress:'http://localhost'
+      RedisPort:'6379'
+      OpenAiDocStorName:storage.outputs.name
+      OpenAiDocStorKey:storage.outputs.key
+      OpenAiDocContainer:containerName
+      SearchService:searchService.outputs.name
+      SearchKey:searchService.outputs.key
+      SecDocContainer:'secdoc'
     }
-    deleteRetentionPolicy: {
-      enabled: true
-      days: 2
-    }
-    containers: [
-      {
-        name: 'content'
-        publicAccess: 'None'
-      }
-    ]
   }
 }
+
+// The application frontend
+module backend 'core/host/appservice.bicep' = {
+  name: 'backend'
+  scope: resourceGroup
+  dependsOn: [
+    appServicePlan
+    storage
+    function
+  ]
+  params: {
+    name: !empty(backendServiceName) ? backendServiceName : '${abbrs.webSitesAppService}backend-${resourceToken}'
+    location: location
+    storageAccountName: storage.outputs.name
+    tags: union(tags, { 'azd-service-name': 'backend' })
+    appServicePlanId: appServicePlan.outputs.id
+    runtimeName: 'python'
+    runtimeVersion: '3.9'
+    scmDoBuildDuringDeployment: true
+    managedIdentity: true
+    appSettings: {
+      QA_URL: '${function.outputs.uri}/QuestionAnswering?code=${function.outputs.key}'
+      CHAT_URL: '${function.outputs.uri}/ChatGpt?code=${function.outputs.key}'
+      CHAT3_URL: '${function.outputs.uri}/Chat?code=${function.outputs.key}'
+      DOCGENERATOR_URL: '${function.outputs.uri}/DocGenerator?code=${function.outputs.key}'
+      SUMMARYQA_URL: '${function.outputs.uri}/SampleQaSummary?code=${function.outputs.key}'
+      BLOB_CONTAINER_NAME: containerName
+      BLOB_CONNECTION_STRING: storage.outputs.connectionString
+    }
+  }
+}
+
 
 output AZURE_LOCATION string = location
 output AZURE_TENANT_ID string = tenant().tenantId

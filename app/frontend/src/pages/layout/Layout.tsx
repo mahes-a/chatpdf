@@ -20,6 +20,11 @@ const Layout = () => {
                                 </NavLink>
                             </li>
                             {/* <li>
+                                <NavLink to="/botchat" className={({ isActive }) => (isActive ? styles.headerNavPageLinkActive : styles.headerNavPageLink)}> 
+                                    Bot Chat&nbsp;&nbsp;
+                                </NavLink>
+                            </li> */}
+                            {/* <li>
                                 <NavLink to="/chat" className={({ isActive }) => (isActive ? styles.headerNavPageLinkActive : styles.headerNavPageLink)}> 
                                     Chat Stream&nbsp;&nbsp;
                                 </NavLink>
@@ -32,6 +37,11 @@ const Layout = () => {
                             <li className={styles.headerNavLeftMargin}>
                                 <NavLink to="/qa" className={({ isActive }) => (isActive ? styles.headerNavPageLinkActive : styles.headerNavPageLink)}>
                                     Ask a question
+                                </NavLink>
+                            </li>
+                            <li className={styles.headerNavLeftMargin}>
+                                <NavLink to="/edgar" className={({ isActive }) => (isActive ? styles.headerNavPageLinkActive : styles.headerNavPageLink)}>
+                                    Edgar Analysis
                                 </NavLink>
                             </li>
                             {/* <li className={styles.headerNavLeftMargin}>

@@ -3,34 +3,14 @@ import azure.functions as func
 import openai
 from langchain.embeddings.openai import OpenAIEmbeddings
 import os
-from langchain.llms import OpenAIChat
-from datetime import datetime, timedelta
-from azure.storage.blob import BlobServiceClient, generate_blob_sas, generate_container_sas
 from langchain.vectorstores import Pinecone
 import pinecone
-from azure.storage.blob import BlobServiceClient
-from langchain.embeddings.openai import OpenAIEmbeddings
-from langchain.prompts import PromptTemplate
-from langchain.embeddings.openai import OpenAIEmbeddings
-import pinecone
 from langchain.chains.qa_with_sources import load_qa_with_sources_chain
-from langchain.chains import VectorDBQAWithSourcesChain
-from langchain.llms.openai import OpenAI, AzureOpenAI
-from redis.commands.search.query import Query
-from redis.commands.search.indexDefinition import IndexDefinition, IndexType
-from redis.commands.search.field import VectorField, TagField, TextField
-import numpy as np
 from langchain.docstore.document import Document
-import tiktoken
-from typing import Mapping
-#from langchain.vectorstores.redis import Redis
-from redis import Redis
-from azure.search.documents import SearchClient
-from azure.search.documents.models import QueryType
-from azure.core.credentials import AzureKeyCredential
+from Utilities.redisIndex import performRedisSearch
+from Utilities.cogSearch import performCogSearch
 
 OpenAiKey = os.environ['OpenAiKey']
-OpenAiApiKey = os.environ['OpenAiApiKey']
 OpenAiEndPoint = os.environ['OpenAiEndPoint']
 OpenAiVersion = os.environ['OpenAiVersion']
 OpenAiDavinci = os.environ['OpenAiDavinci']
@@ -42,105 +22,12 @@ OpenAiDocContainer = os.environ['OpenAiDocContainer']
 PineconeEnv = os.environ['PineconeEnv']
 PineconeKey = os.environ['PineconeKey']
 VsIndexName = os.environ['VsIndexName']
-OpenAiChatDocStorName =  os.environ['OpenAiChatDocStorName']
-OpenAiChatDocContainer =  os.environ['OpenAiChatDocContainer']
 OpenAiChat = os.environ['OpenAiChat']
-OpenAiChatBlobKey = os.environ['OpenAiChatBlobKey']
 OpenAiEmbedding = os.environ['OpenAiEmbedding']
-RedisAddress = os.environ['RedisAddress']
-RedisPassword = os.environ['RedisPassword']
 OpenAiEmbedding = os.environ['OpenAiEmbedding']
-RedisPort = os.environ['RedisPort']
 SearchService = os.environ['SearchService']
 SearchKey = os.environ['SearchKey']
 
-redisUrl = "redis://default:" + RedisPassword + "@" + RedisAddress + ":" + RedisPort
-redisConnection = Redis(host= RedisAddress, port=RedisPort, password=RedisPassword) #api for Docker localhost for local execution
-
-ChatBlobClient = BlobServiceClient(
-    account_url=f"https://{OpenAiChatDocStorName}.blob.core.windows.net",
-    credential=OpenAiChatBlobKey)
-ChatBlobContainer = ChatBlobClient.get_container_client(OpenAiChatDocContainer)
-
-def getEmbedding(text: str, engine="text-embedding-ada-002") -> list[float]:
-    try:
-        text = text.replace("\n", " ")
-        EMBEDDING_ENCODING = 'cl100k_base' if engine == 'text-embedding-ada-002' else 'gpt2'
-        encoding = tiktoken.get_encoding(EMBEDDING_ENCODING)
-        return openai.Embedding.create(input=encoding.encode(text), engine=engine)["data"][0]["embedding"]
-    except Exception as e:
-        logging.info(e)
-
-def noNewLines(s: str) -> str:
-    return s.replace('\n', ' ').replace('\r', ' ')
-
-def performCogSearch(question, indexName, k):
-    searchClient = SearchClient(endpoint=f"https://{SearchService}.search.windows.net",
-        index_name=indexName,
-        credential=AzureKeyCredential(SearchKey))
-    try:
-        r = searchClient.search(question, filter=None, top=k)
-        # r = searchClient.search(question, 
-        #             filter=None,
-        #             query_type=QueryType.SEMANTIC, 
-        #             query_language="en-us", 
-        #             query_speller="lexicon", 
-        #             semantic_configuration_name="default", 
-        #             top=5, 
-        #             query_caption="extractive|highlight-false")
-        # results = [doc['id'] + ": " + noNewLines(" . ".join([c.text for c in doc['@search.captions']])) for doc in r]
-        #content = "\n".join(results)
-        documents = [
-        Document(page_content=doc['content'], metadata={"id": doc['id'], "sources": doc['sourcefile']})
-        for doc in r
-        ]
-        #logging.info(documents)
-        return documents
-    except Exception as e:
-        logging.info(e)
-
-    return [Document(page_content="No results found")]
-
-
-
-def performRedisSearch(question, indexName, k):
-    #embeddingQuery= Redis.embedding_function(question)
-    question = question.replace("\n", " ")
-    logging.info("Get Embedding")
-    embeddingQuery = getEmbedding(question, engine=OpenAiEmbedding)
-    arrayEmbedding = np.array(embeddingQuery)
-    returnField = ["metadata", "content", "vector_score"]
-    vectorField = "content_vector"
-    hybridField = "*"
-    baseQuery = (
-        f"{hybridField}=>[KNN {k} @{vectorField} $vector AS vector_score]"
-    )
-    logging.info("Perform Query Search")
-    redisQuery = (
-        Query(baseQuery)
-        .return_fields(*returnField)
-        .sort_by("vector_score")
-        .paging(0, 5)
-        .dialect(2)
-    )
-    params_dict: Mapping[str, str] = {
-            "vector": np.array(arrayEmbedding)  # type: ignore
-            .astype(dtype=np.float32)
-            .tobytes()
-    }
-
-    # perform vector search
-    logging.info("Index name is " + indexName)
-    try:
-        results = redisConnection.ft(index_name=indexName).search(redisQuery, params_dict)
-        documents = [
-        Document(page_content=result.content, metadata=json.loads(result.metadata))
-        for result in results.docs
-        ]
-    except Exception as e:
-        logging.info(e)
-
-    return documents
 
 def main(req: func.HttpRequest, context: func.Context) -> func.HttpResponse:
     logging.info(f'{context.function_name} HTTP trigger function processed a request.')
@@ -197,7 +84,7 @@ def getChatHistory(history, includeLastTurn=True, maxTokens=1000) -> str:
             break
     return historyText
 
-def GetRrrAnswer(history, indexNs, indexType):
+def GetRrrAnswer(history, approach, overrides, indexNs, indexType):
     promptPrefix = """<|im_start|>system
     Be brief in your answers.
     Answer ONLY with the facts listed in the list of sources below. If there isn't enough information below, say you don't know. Do not generate answers that don't use the sources below. If asking a clarifying question to the user would help, ask the question.
@@ -233,6 +120,10 @@ def GetRrrAnswer(history, indexNs, indexType):
     openai.api_version = OpenAiVersion
     openai.api_base = f"https://{OpenAiService}.openai.azure.com"
 
+    topK = overrides.get("top") or 5
+    temperature = overrides.get("temperature") or 0.3
+    tokenLength = overrides.get('tokenLength') or 500
+    logging.info("Search for Top " + str(topK))
     # STEP 1: Generate an optimized keyword search query based on the chat history and the last question
     optimizedPrompt = qaPromptTemplate.format(chat_history=getChatHistory(history, includeLastTurn=False),
                                               question=history[-1]["user"])
@@ -243,8 +134,9 @@ def GetRrrAnswer(history, indexNs, indexType):
         completion = openai.Completion.create(
             engine=OpenAiDavinci,
             prompt=optimizedPrompt,
-            temperature=0.0,
-            max_tokens=32,
+            temperature=temperature,
+            #max_tokens=32,
+            max_tokens=tokenLength,
             n=1,
             stop=["\n"])
         q = completion.choices[0].text
@@ -262,19 +154,31 @@ def GetRrrAnswer(history, indexNs, indexType):
     if indexType == 'pinecone':
         vectorDb = Pinecone.from_existing_index(index_name=VsIndexName, embedding=embeddings)
         logging.info("Pinecone Setup done to search against - " + indexNs + " for question " + q)
-        docs = vectorDb.similarity_search(q, k=5, namespace=indexNs)
+        docs = vectorDb.similarity_search(q, k=topK, namespace=indexNs)
         logging.info("Executed Index and found " + str(len(docs)))
     elif indexType == "redis":
         try:
             #vectorDb =  Redis.from_existing_index(embeddings, index_name=indexNs, kwargs={'redis_url': redisUrl}),
             #logging.info("Redis Setup done")
             #docs = vectorDb.similarity_search(q, k=5)
-            docs = performRedisSearch(q, indexNs, 5)
+            returnField = ["metadata", "content", "vector_score"]
+            vectorField = "content_vector"
+            results = performRedisSearch(q, indexNs, topK, returnField, vectorField)
+            docs = [
+                    Document(page_content=result.content, metadata=json.loads(result.metadata))
+                    for result in results.docs
+            ]
         except Exception as e:
             return {"data_points": "", "answer": "Working on fixing Redis Implementation " + str(e), "thoughts": ""}
     elif indexType == "cogsearch":
-        docs = performCogSearch(q, indexNs, 5)
-
+        r = performCogSearch(q, indexNs, topK)
+        if r == None:
+                docs = [Document(page_content="No results found")]
+        else :
+            docs = [
+                Document(page_content=doc['content'], metadata={"id": doc['id'], "source": doc['sourcefile']})
+                for doc in r
+                ]
     elif indexType == 'milvus':
         docs = []
 
@@ -293,8 +197,10 @@ def GetRrrAnswer(history, indexNs, indexType):
         completion = openai.Completion.create(
             engine=OpenAiChat,
             prompt=finalPrompt,
-            temperature=0.7,
-            max_tokens=1024,
+            #temperature=0.7,
+            #max_tokens=1024,
+            temperature=temperature,
+            max_tokens=tokenLength,
             n=1,
             stop=["<|im_end|>", "<|im_start|>"])
     except Exception as e:
@@ -324,7 +230,7 @@ def GetAnswer(history, approach, overrides, indexNs, indexType):
     try:
       logging.info("Loading OpenAI")
       if (approach == 'rrr'):
-        r = GetRrrAnswer(history, indexNs, indexType)
+        r = GetRrrAnswer(history, approach, overrides, indexNs, indexType)
       else:
           return json.dumps({"error": "unknown approach"})
       return r
@@ -371,7 +277,7 @@ def TransformValue(record, indexNs, indexType):
         # Getting the items from the values/data/text
         history = data['history']
         approach = data['approach']
-        overrides = data['approach']
+        overrides = data['overrides']
 
         summaryResponse = GetAnswer(history, approach, overrides, indexNs, indexType)
         return ({

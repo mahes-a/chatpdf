@@ -29,7 +29,7 @@ The repo provides a way to upload your own data so it's ready to try end to end.
 #### To Run Locally
 
 * [Azure Developer CLI](https://aka.ms/azure-dev/install)
-* [Python 3+](https://www.python.org/downloads/)
+* [Python 3.9](https://www.python.org/downloads/)
 * [Node.js](https://nodejs.org/en/download/)
 * [Git](https://git-scm.com/downloads)
 * [Azure Functions Extension for VSCode](https://marketplace.visualstudio.com/items?itemName=ms-azuretools.vscode-azurefunctions)
@@ -38,29 +38,69 @@ The repo provides a way to upload your own data so it's ready to try end to end.
 
 ### Installation
 
-1. Deploy the required Azure Services - Using [Automated Deployment](http://Comingsoon) or Manually following minimum required resources 
-   1. az deployment sub create --location eastus  --template-file main.bicep --parameters prefix=astoai resourceGroupName=astoai location=eastus
-   2. [OpenAI service](https://learn.microsoft.com/en-us/azure/cognitive-services/openai/how-to/create-resource?pivots=web-portal).   Please be aware of the model & region availability documented [here]
+1. Deploy the required Azure Services - Using scripts and steps below: 
+   1. Git clone the repo
+   2. Download the pre-requisites above
+   3. Run `azd login` to login to Azure using your credentials
+   4. Run `azd init` to initialize the environment name, subscription & location
+      1. enter environment name, select subscription & location
+   5. Run `azd env set AZURE_PREFIX <PrefixName>`  - Replace prefix name that will be used during deployment
+   6. Run `azd up` to deploy the infrastructure code (azure services) and deploy the Azure functions as well as Backend app
+
+   **Note** Ensure that the location you select is the location where OpenAI service is available to deploy (https://learn.microsoft.com/en-us/azure/cognitive-services/openai/concepts/models#model-summary-table-and-region-availability)
+      1. Above command will deploy following services
+         1. Azure App Service Plan (Linux - B1 Tier)
+         2. Cognitive Search Service (Standard Tier)
+         3. Azure App Service (To Deploy backend service)
+         4. Azure Function app (For all Python API)
+         5. Storage Account (to store all your files) & Function storage account
+         6. Azure Open AI Service
+         7. Azure Application Insight
+   
+   **Note** External vector store are not deployed and you will need to manually deploy them (Pinecone or Redis)
+2. Alternatively deploy the following services manually
+   1. [OpenAI service](https://learn.microsoft.com/en-us/azure/cognitive-services/openai/how-to/create-resource?pivots=web-portal).   Please be aware of the model & region availability documented [here]
 (https://learn.microsoft.com/en-us/azure/cognitive-services/openai/concepts/models#model-summary-table-and-region-availability)
    1. [Storage Account](https://learn.microsoft.com/en-us/azure/storage/common/storage-account-create?tabs=azure-portal) and a container
    2. One of the Document Store
-      1. [Pinecone Starter](https://www.pinecone.io/pricing/)
+      1. [Pinecone Starter](https://www.pinecone.io/pricing/).  **Note** Make sure you create the index in Pincone with dimensions as 1536 and metric as cosine
       2. [Cognitive Search](https://learn.microsoft.com/en-us/azure/search/search-create-service-portal)
       3. Redis
+   3. Create Function App (https://learn.microsoft.com/en-us/azure/azure-functions/functions-create-function-app-portal)
+   4. Create Azure Web App
+   5. Git clone the repo
+   6. Open the cloned repo folder in VSCode
+   7. Open new terminal and go to /app/frontend directory
+   8. Run `npm install` to install all the packages
+   9.  Go to /api/Python directory
+   10. Run `pip install -r requirements.txt` to install all required python packages
+   11. Copy sample.settings.json to local.settings.json
+   12. Update the configuration (Minimally you need OpenAi, one of the document store, storage account)
+   13. Deploy the Azure Python API to Function app
+   14. Open new terminal and go to /app/frontend directory
+   15. Run npm run build for production build and copying static files to app/backend/static directory
+   16. Open new terminal and go to /app/backend directory
+   17. Copy env.example to .env file and edit the file to enter the Python localhost API and the storage configuration
+   18. Deploy the app/backend Azure web app.
+
+
+### Run Locally
+   
 1. Git clone the repo
 2. Open the cloned repo folder in VSCode
 3. Open new terminal and go to /app/frontend directory
 4. Run `npm install` to install all the packages
-5. Go to /api/Python directory
-6. Run `pip install -r requirements.txt` to install all required python packages
-7. Copy sample.settings.json to local.settings.json
-8. Update the configuration (Minimally you need OpenAi, one of the document store, storage account)
+5.  Go to /api/Python directory
+6.  Run `pip install -r requirements.txt` to install all required python packages
+7.  Copy sample.settings.json to local.settings.json
+8.  Update the configuration (Minimally you need OpenAi, one of the document store, storage account)
 9.  Start the Python API by running `func host start`
-10. Open new terminal and go to /api/backend directory
-11. Copy env.example to .env file and edit the file to enter the Python localhost API and the storage configuration
-12. Run py(or python) app.py to start the server.
-13. Open new terminal and go to /api/frontend directory
-14. Run npm run dev to start the local server
+10. Open new terminal and go to /app/backend directory
+12. Copy env.example to .env file and edit the file to enter the Python localhost API and the storage configuration
+13. Run py app.py to start the backend locally (on port 5000)
+19. Open new terminal and go to /app/frontend directory
+20. Run npm run dev to start the local server (on port 5173)
+21. Browse the localhost:5173 to open the web app.
 
 Once in the web app:
 
