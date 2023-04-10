@@ -17,7 +17,6 @@ import { AnalysisPanel, AnalysisPanelTabs } from "../../components/AnalysisPanel
 import { ClearChatButton } from "../../components/ClearChatButton";
 import { SettingsButton } from "../../components/SettingsButton";
 
-import { BlobServiceClient } from "@azure/storage-blob";
 
 const ChatGpt = () => {
     const [isConfigPanelOpen, setIsConfigPanelOpen] = useState(false);
@@ -26,7 +25,7 @@ const ChatGpt = () => {
     const [useSemanticRanker, setUseSemanticRanker] = useState<boolean>(true);
     const [useSemanticCaptions, setUseSemanticCaptions] = useState<boolean>(false);
     const [excludeCategory, setExcludeCategory] = useState<string>("");
-    const [useSuggestFollowupQuestions, setUseSuggestFollowupQuestions] = useState<boolean>(false);
+    const [useSuggestFollowupQuestions, setUseSuggestFollowupQuestions] = useState<boolean>(true);
     const [options, setOptions] = useState<any>([])
     const [temperature, setTemperature] = useState<number>(0.3);
     const [tokenLength, setTokenLength] = useState<number>(500);
@@ -305,17 +304,27 @@ const ChatGpt = () => {
                         <div className={styles.commandsContainer}>
                             <ClearChatButton className={styles.commandButton} onClick={clearChat} disabled={!lastQuestionRef.current || isLoading} />
                             <SettingsButton className={styles.commandButton} onClick={() => setIsConfigPanelOpen(!isConfigPanelOpen)} />
+                            <div className={styles.commandButton}>{selectedItem ? 
+                                "Document Name : "  + selectedItem.text : undefined}</div>
                         </div>
                          <div className={styles.chatRoot}>
                             <div className={styles.chatContainer}>
                                 {!lastQuestionRef.current ? (
                                     <div className={styles.chatEmptyState}>
-                                        <SparkleFilled fontSize={"40px"} primaryFill={"rgba(115, 118, 225, 1)"} aria-hidden="true" aria-label="Chat logo" />
+                                        <SparkleFilled fontSize={"30px"} primaryFill={"rgba(115, 118, 225, 1)"} aria-hidden="true" aria-label="Chat logo" />
                                         <h3 className={styles.chatEmptyStateTitle}>Chat with your data</h3>
                                         <div className={styles.example}>
                                             <p className={styles.exampleText}><b>Document Summary</b> : {summary}</p>
                                         </div>
                                         <h4 className={styles.chatEmptyStateSubtitle}>Ask anything or try from following example</h4>
+                                        <div className={styles.chatInput}>
+                                            <QuestionInput
+                                                clearOnSend
+                                                placeholder="Type a new question"
+                                                disabled={isLoading}
+                                                onSend={question => makeApiRequest(question)}
+                                            />
+                                        </div>
                                         {exampleLoading ? <div><span>Please wait, Generating Sample Question</span><Spinner/></div> : null}
                                         <ExampleList onExampleClicked={onExampleClicked}
                                         EXAMPLES={
@@ -360,15 +369,6 @@ const ChatGpt = () => {
                                         <div ref={chatMessageStreamEnd} />
                                     </div>
                                 )}
-
-                                <div className={styles.chatInput}>
-                                    <QuestionInput
-                                        clearOnSend
-                                        placeholder="Type a new question"
-                                        disabled={isLoading}
-                                        onSend={question => makeApiRequest(question)}
-                                    />
-                                </div>
                             </div>
 
                             {answers.length > 0 && activeAnalysisPanelTab && (
@@ -438,6 +438,12 @@ const ChatGpt = () => {
                                     defaultValue={tokenLength.toString()}
                                     onChange={onTokenLengthChange}
                                 />
+                                <Checkbox
+                                    className={styles.chatSettingsSeparator}
+                                    checked={useSuggestFollowupQuestions}
+                                    label="Suggest follow-up questions"
+                                    onChange={onUseSuggestFollowupQuestionsChange}
+                                />
                                 {/* <TextField className={styles.chatSettingsSeparator} label="Exclude category" onChange={onExcludeCategoryChanged} />
                                 <Checkbox
                                     className={styles.chatSettingsSeparator}
@@ -470,17 +476,27 @@ const ChatGpt = () => {
                         <div className={styles.commandsContainer}>
                             <ClearChatButton className={styles.commandButton} onClick={clearChat3} disabled={!lastQuestionRef3.current || isLoading} />
                             <SettingsButton className={styles.commandButton} onClick={() => setIsConfigPanelOpen(!isConfigPanelOpen)} />
+                            <div className={styles.commandButton}>{selectedItem ? 
+                                "Document Name : "  + selectedItem.text : undefined}</div>
                         </div>
                          <div className={styles.chatRoot}>
                             <div className={styles.chatContainer}>
                                 {!lastQuestionRef3.current ? (
                                     <div className={styles.chatEmptyState}>
-                                        <SparkleFilled fontSize={"40px"} primaryFill={"rgba(115, 118, 225, 1)"} aria-hidden="true" aria-label="Chat logo" />
+                                        <SparkleFilled fontSize={"30px"} primaryFill={"rgba(115, 118, 225, 1)"} aria-hidden="true" aria-label="Chat logo" />
                                         <h3 className={styles.chatEmptyStateTitle}>Chat with your data</h3>
                                         <div className={styles.example}>
                                             <p className={styles.exampleText}><b>Document Summary</b> : {summary}</p>
                                         </div>
                                         <h4 className={styles.chatEmptyStateSubtitle}>Ask anything or try from following example</h4>
+                                        <div className={styles.chatInput}>
+                                            <QuestionInput
+                                                clearOnSend
+                                                placeholder="Type a new question"
+                                                disabled={isLoading}
+                                                onSend={question => makeApiRequest3(question)}
+                                            />
+                                        </div>
                                         {exampleLoading ? <div><span>Please wait, Generating Sample Question</span><Spinner/></div> : null}
                                         <ExampleList onExampleClicked={onExampleClicked3}
                                         EXAMPLES={
@@ -500,8 +516,8 @@ const ChatGpt = () => {
                                                         onCitationClicked={c => onShowCitation(c, index)}
                                                         onThoughtProcessClicked={() => onToggleTab(AnalysisPanelTabs.ThoughtProcessTab, index)}
                                                         onSupportingContentClicked={() => onToggleTab(AnalysisPanelTabs.SupportingContentTab, index)}
-                                                        onFollowupQuestionClicked={q => makeApiRequest(q)}
-                                                        showFollowupQuestions={useSuggestFollowupQuestions && answers.length - 1 === index}
+                                                        onFollowupQuestionClicked={q => makeApiRequest3(q)}
+                                                        showFollowupQuestions={useSuggestFollowupQuestions && answers3.length - 1 === index}
                                                     />
                                                 </div>
                                             </div>
@@ -525,15 +541,6 @@ const ChatGpt = () => {
                                         <div ref={chatMessageStreamEnd} />
                                     </div>
                                 )}
-
-                                <div className={styles.chatInput}>
-                                    <QuestionInput
-                                        clearOnSend
-                                        placeholder="Type a new question"
-                                        disabled={isLoading}
-                                        onSend={question => makeApiRequest3(question)}
-                                    />
-                                </div>
                             </div>
 
                             {answers3.length > 0 && activeAnalysisPanelTab && (
@@ -602,6 +609,12 @@ const ChatGpt = () => {
                                     max={4000}
                                     defaultValue={tokenLength.toString()}
                                     onChange={onTokenLengthChange}
+                                />
+                                <Checkbox
+                                    className={styles.chatSettingsSeparator}
+                                    checked={useSuggestFollowupQuestions}
+                                    label="Suggest follow-up questions"
+                                    onChange={onUseSuggestFollowupQuestionsChange}
                                 />
                                 {/* <TextField className={styles.chatSettingsSeparator} label="Exclude category" onChange={onExcludeCategoryChanged} />
                                 <Checkbox
