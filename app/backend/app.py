@@ -48,7 +48,7 @@ def chat():
     indexType=request.json["indexType"]
     indexNs=request.json["indexNs"]
     postBody=request.json["postBody"]
- 
+    logging.info("Docs " + str(postBody))
     logging.info(f"indexType: {indexType}")
     logging.info(f"indexNs: {indexNs}")
     
@@ -57,9 +57,13 @@ def chat():
         url = os.environ.get("CHAT_URL")
 
         data = postBody
+        #with open("sample.json", "w") as outfile: json.dump(data, outfile)
         params = {'indexType': indexType, "indexNs": indexNs }
         resp = requests.post(url, params=params, data=json.dumps(data), headers=headers)
         jsonDict = json.loads(resp.text)
+        
+        #with open("sampleresult.json", "w") as outfile1: json.dump(resp.json, outfile1)
+        logging.info("Docs " + str(jsonDict))
         #return json.dumps(jsonDict)
         return jsonify(jsonDict)
     except Exception as e:

@@ -179,6 +179,7 @@ def summarizeGenerateQa(docs):
         qaChain = load_qa_with_sources_chain(llm, chain_type='stuff', prompt=qaPrompt)
         answer = qaChain({"input_documents": docs[:5], "question": ''}, return_only_outputs=True)
         qa = answer['output_text'].replace('\nSample Questions: \n', '').replace('\nSample Questions:\n', '').replace('\n', '\\n')
+        logging.info("summary responded")
     except Exception as e:
         logging.info(e)
         qa = 'No Sample QA generated'
@@ -219,9 +220,10 @@ def storeIndex(indexType, docs, fileName, nameSpace):
     embeddings = OpenAIEmbeddings(document_model_name=OpenAiEmbedding,
                                     chunk_size=1,
                                     openai_api_key=OpenAiKey)
-    logging.info("Store the index in " + indexType + " and name : " + nameSpace)
+    logging.info("Store the index in 1 " + indexType + " and name : " + nameSpace)
     if indexType == 'pinecone':
         Pinecone.from_documents(docs, embeddings, index_name=VsIndexName, namespace=nameSpace)
+        logging.info("Store the index in 2 " + indexType + " and name : " + nameSpace)
     elif indexType == "redis":
         Redis.from_documents(docs, embeddings, redis_url=redisUrl, index_name=nameSpace)
     elif indexType == "cogsearch":
@@ -305,18 +307,22 @@ def Embed(indexType, loadType, multiple, indexName,  value,  blobConnectionStrin
                             #loader = PyMuPDFLoader(downloadPath)
                             rawDocs = loader.load()
                             docs = textSplitter.split_documents(rawDocs)
-                            logging.info("Docs " + str(len(docs)))
+                            logging.info("Docs 1" + str(len(docs)))
                             storeIndex(indexType, docs, fileName, uResultNs.hex)
                         except Exception as e:
+                            logging.info("Docs 2")
                             logging.info(e)
                             upsertMetadata(OpenAiDocConnStr, OpenAiDocContainer, fileName, {'embedded': 'false', 'indexType': indexType})
                             return "Error"
                     logging.info("Perform Summarization and QA")
                     qa, summary = summarizeGenerateQa(docs)
-                    logging.info("Upsert metadata")
+                    logging.info("Upsert metadata1")
                     metadata = {'embedded': 'true', 'namespace': uResultNs.hex, 'indexType': indexType, "indexName": indexName}
+                    logging.info(fileName)
                     upsertMetadata(OpenAiDocConnStr, OpenAiDocContainer, fileName, metadata)
+                    logging.info(fileName)
                     metadata = {'summary': summary, 'qa': qa}
+                    logging.info(fileName)
                     upsertMetadata(OpenAiDocConnStr, OpenAiDocContainer, fileName, metadata)
                     logging.info("Sleeping")
                     time.sleep(5)

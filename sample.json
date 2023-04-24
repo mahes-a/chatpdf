@@ -1,0 +1,48 @@
+{
+  "values": [
+    {
+      "recordId": 0,
+      "data": {
+        "history": [
+          {
+            "user": " What is the syntax for converting a Parquet table to a Delta Lake format?",
+            "bot": " CONVERT TO DELTA [dbName.]tableName\n     [PARTITIONED BY (col_name1 col_type1, col_name2 col_type2)]\n     \n     CONVERT TO DELTA parquet.`/path/to/table` -- note backticks\n     [PARTITIONED BY (col_name1 col_type1, col_name2 col_type2)] \n     \n     [DeltaTable.convertToDelta(spark, \"parquet.`/path/to/parquet_table`\")]\n     \n     [DeltaTable.convertToDelta(spark, \"parquet.`/path/to/parquet_table`\", \"part int\")] \n     \n     <<What is the difference between converting a Parquet table to Delta Lake format by table name and by path?>> \n     <<Can you convert a partitioned Parquet table to Delta Lake format?>> \n     <<What is the syntax for converting a Delta Lake table to a Parquet table?>>"
+          },
+          {
+            "user": "What is the difference between converting a Parquet table to Delta Lake format by table name and by path?",
+            "bot": " Converting a Parquet table to Delta Lake format by table name is preferred since named tables are managed in the Hive Metastore. When you DROP a named table, the data is dropped also, which is not the case for path-based tables. \n     \n     Converting a Parquet table to Delta Lake format by path requires using backticks and specifying the path to the table. \n     \n     <<What is the difference between a named table and a path-based table in Delta Lake?>> \n     <<What is the syntax for querying a Delta Lake table by table name?>> \n     <<Can you convert a non-partitioned Parquet table to Delta Lake format?>>"
+          },
+          {
+            "user": "What is the syntax for querying a Delta Lake table by table name?",
+            "bot": " SELECT * FROM [dbName.] tableName\n     \n     <<What is the syntax for querying a Delta Lake table by path?>> \n     <<What is the difference between a named table and a path-based table in Delta Lake?>> \n     <<What is the syntax for creating a Delta Lake table with an explicit schema?>>"
+          },
+          {
+            "user": "What is the syntax for creating a Delta Lake table with an explicit schema?",
+            "bot": " CREATE TABLE [dbName.] tableName (\n         id INT [NOT NULL],\n         name STRING,\n         date DATE,\n         int_rate FLOAT\n     )\n     USING DELTA\n     [PARTITIONED BY (time, date)] -- optional\n     \n     <<What are the data types supported by Delta Lake?>> \n     <<What is the syntax for inserting data into a Delta Lake table?>> \n     <<What is the syntax for updating data in a Delta Lake table?>>"
+          },
+          {
+            "user": "What is the syntax for inserting data into a Delta Lake table?",
+            "bot": " INSERT INTO TABLE tableName VALUES (\n         (8003, \"Kim Jones\", \"2020-12-18\", 3.875),\n         (8004, \"Tim Jones\", \"2020-12-20\", 3.750) \n     );   \n     \n     INSERT INTO tableName SELECT * FROM sourceTable\n     \n     INSERT OVERWRITE loan_by_state_delta VALUES (...)\n\n     <<What is the syntax for creating a Delta Lake table as SELECT * with no upfront schema definition?>> \n     <<What is the syntax for updating data in a Delta Lake table?>> \n     <<What is the syntax for deleting data from a Delta Lake table?>>"
+          },
+          {
+            "user": "What is the syntax for updating data in a Delta Lake table?",
+            "bot": " UPDATE tableName SET event = 'click' WHERE event = 'clk'\n     \n     <<What is the syntax for deleting data from a Delta Lake table?>> \n     <<What is the syntax for upserting data in a Delta Lake table?>> \n     <<What is the syntax for creating a Delta Lake table as SELECT * with no upfront schema definition?>>"
+          },
+          {
+            "user": "What is the syntax for creating a Delta Lake table as SELECT * with no upfront schema definition?"
+          }
+        ],
+        "approach": "rrr",
+        "indexType":"pinecone",
+        "indexNs":"fd9753880b2444088dc52d60f87b1eb9",
+        "overrides": {
+          "semantic_ranker": true,
+          "semantic_captions": false,
+          "top": 3,
+          "temperature": 0.3,
+          "suggest_followup_questions": true
+        }
+      }
+    }
+  ]
+}
