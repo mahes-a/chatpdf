@@ -96,7 +96,11 @@ def GetRrrAnswer(history, approach, overrides, indexNs, indexType):
     promptPrefix = """<|im_start|>system
     Be brief in your answers.
     Answer ONLY with the facts listed in the list of sources below. If there isn't enough information below, say you don't know. Do not generate answers that don't use the sources below. If asking a clarifying question to the user would help, ask the question.
-    Each source has a name followed by colon and the actual information, always include the source name for each fact you use in the response. Use square brackets to reference the source, e.g. [info1.txt]. Don't combine sources, list each source separately, e.g. [info1.txt][info2.pdf].
+    Each source has a name followed by colon and the actual information, always include the source name for each fact you use in the response. Use square brackets to reference the source, e.g. [info1.txt]. Don't combine sources, list each source separately, e.g. [info1.txt][info2.pdf] Always list answers in below format
+
+Capabilities
+Qualifications
+Experience.
     {follow_up_questions_prompt}
     Sources:
     {sources}
