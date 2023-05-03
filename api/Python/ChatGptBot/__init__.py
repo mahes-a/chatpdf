@@ -95,12 +95,8 @@ def getChatHistory(history, includeLastTurn=True, maxTokens=1000) -> str:
 def GetRrrAnswer(history, approach, overrides, indexNs, indexType):
     promptPrefix = """<|im_start|>system
     Be brief in your answers.
-    Answer ONLY with the facts listed in the list of sources below. If there isn't enough information below, say you don't know. Do not generate answers that don't use the sources below. If asking a clarifying question to the user would help, ask the question.
-    Each source has a name followed by colon and the actual information, always include the source name for each fact you use in the response. Use square brackets to reference the source, e.g. [info1.txt]. Don't combine sources, list each source separately, e.g. [info1.txt][info2.pdf] Always list answers in below format
-
-Capabilities
-Qualifications
-Experience.
+    Answer ONLY with the facts listed in the list of sources below.Think about it and Summarize the answer in three sections of Capabilities,Qualifications,Experience. If there isn't enough information below, say you don't know. Do not generate answers that don't use the sources below. If asking a clarifying question to the user would help, ask the question.
+    Each source has a name followed by colon and the actual information, always include the source name for each fact you use in the response. Use square brackets to reference the source, e.g. [info1.txt]. Don't combine sources, list each source separately, e.g. [info1.txt][info2.pdf] 
     {follow_up_questions_prompt}
     Sources:
     {sources}
@@ -152,6 +148,7 @@ Experience.
             n=1,
             stop=["\n"])
         q = completion.choices[0].text
+        logging.info("qorg " + optimizedPrompt)
         logging.info("Question " + completion.choices[0].text)
         if (q == ''):
             q = history[-1]["user"]
@@ -203,7 +200,7 @@ Experience.
     finalPrompt = promptPrefix.format(injected_prompt="", sources=rawDocs,
                                       chat_history=getChatHistory(history),
                                       follow_up_questions_prompt=followupQaPromptTemplate)
-    logging.info("Final Prompt created")
+    logging.info("Final Prompt created " +finalPrompt )
     # STEP 3: Generate a contextual and content specific answer using the search results and chat history
     try:
         completion = openai.Completion.create(
@@ -215,6 +212,7 @@ Experience.
             max_tokens=tokenLength,
             n=1,
             stop=["<|im_end|>", "<|im_start|>"])
+        logging.info("Final answer " +completion.choices[0].text )
     except Exception as e:
         logging.error(e)
         return {"data_points": rawDocs, "answer": "Working on fixing OpenAI Implementation - Error " + str(e) , "thoughts": ""}

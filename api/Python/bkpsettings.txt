@@ -1,0 +1,39 @@
+{
+    "IsEncrypted": false,
+    "Values": {
+      "FUNCTIONS_WORKER_RUNTIME": "python",
+      "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+      "AzureWebJobs.HttpTrigger1.Disabled": "false",
+      "OpenAiKey": "dd7b1eaf110b4ae2b75fc6faa833b7d9", 
+      "OpenAiService": "openai-ma", 
+      "OpenAiEndPoint": "https://openai-ma.openai.azure.com/",
+      "OpenAiVersion": "2022-12-01",
+      "OpenAiDavinci": "davinci003", 
+      "OpenAiEmbedding": "text-embedding-ada-002", 
+      "MaxTokens": 500, 
+      "Temperature": 0.3,
+      "OpenAiChat": "chatgptpreview", 
+      "PineconeKey": "ddca8a39-6113-4147-8115-b1e32e29ced5", 
+      "PineconeEnv": "us-west1-gcp", 
+      "VsIndexName": "pineconewingmanindex", 
+      "RedisPassword": "Password",
+      "RedisAddress": "http://localhost", 
+      "RedisPort": "6379",
+      "OpenAiDocStorName": "strgwingman", 
+      "OpenAiDocStorKey": "JGhpo3KX4OpsWgE+UKEeSPPpkmQtB91Glwao+X8TgV+b6dYGKR5ZNMQ5g0YdwKMxrXmjAuaDwFmE+AStlZlRgQ==", 
+      "OpenAiDocContainer": "chat",
+      "SearchService":"macosmossrch", 
+      "SearchKey":"WqtZUWfUxU5MDYYlUYM5Kp0FMuABGjiw0JbfdzzeS5AzSeCRVQaV", 
+      "SecDocContainer": "" ,
+      "SynapseName":"",
+"SynapseUser" :"",
+"SynapsePassword":"",
+"SynapsePool" :""
+    },
+    "Host": {
+      "LocalHttpPort": 7071,
+      "CORS": "*",
+      "CORSCredentials": false
+    }
+  }
+  
